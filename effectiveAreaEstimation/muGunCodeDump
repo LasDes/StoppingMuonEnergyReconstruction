@@ -1,0 +1,24 @@
+from icecube import icetray, dataclasses, dataio, simclasses, gulliver
+# I3Units allready contained in icetray
+from I3Tray import *
+from icecube.MuonGun import load_model, StaticSurfaceInjector, Cylinder, OffsetPowerLaw
+from icecube.MuonGun.segments import GenerateBundles
+
+# Use Hoerandel as a template for generating muons
+model = load_model('Hoerandel5_atmod12_SIBYLL')
+# Generate only single muons, no bundles
+model.flux.max_multiplicity = 1
+# Center the sampling surface on the barycenter of IC79 strings
+surface = Cylinder(1600*I3Units.m, 800*I3Units.m, dataclasses.I3Position(31.25, 19.64, 0))
+# Draw energies from an E^-2 power law broken at 1 TeV, from 10 TeV to 10 PeV
+spectrum = OffsetPowerLaw(2, 1*I3Units.TeV, 10*I3Units.TeV, 10*I3Units.PeV)
+# Set up the generator. This gets stored in a special frame for later reference
+generator = StaticSurfaceInjector(surface, model.flux, spectrum, model.radius)
+
+tray = I3Tray()
+tray.AddSegment(GenerateBundles, 'MuonGenerator', Generator=generator, NEvents=10000, GCDFile='/data/sim/sim-new/downloads/GCD_31_08_11/GeoCalibDetectorStatus_IC79.55380_L2a.i3.gz', FromTime=dataclasses.I3Time(2010, 158112000000000000L), ToTime=dataclasses.I3Time(2010, 158112000000000000L))
+tray.Add("I3Writer",Filename=os.path.expanduser("/data/user/sninfa/muon_gun/test.i3.bz2"))
+tray.Add("TrashCan", "trash")
+
+tray.Execute()
+tray.Finish()
