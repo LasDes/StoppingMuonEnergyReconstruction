@@ -157,3 +157,63 @@ The unfolding process is performed within two jupyter notebooks: 'jupyterNoteboo
 * `effArea_mgs_corsica_nonstop_total.pickle`
 
 These are the output of the effective area estimation step above.
+
+## Submitting Condor-Jobs generated with JobWriters
+
+Due to the large amount of data likely to be involved in this analysis, it is recommended to perform much, if not all, of the
+steps described above on a remote server cluster that offers far greater computational capacities than any local machine.
+The Icecube collaboration has access to the NFX-Cluster at UW Madison.
+The so called COLBAT nodes can be used interactivley like the local machine and are primarily used for tests and less expensive
+processing steps that require only a limited amount of CPU cores and memory.
+On the other hand, processing thousands of individual Level-3 MonteCarlo files during the featureExtraction step is best done using
+the CONDOR system. Since the MonteCarlo files are processed indipendently, the featureExtraction-step can be split into
+jobs that handle only one single file. These jobs can be submited to the CONDOR system with then manages their execution. This approach
+will probably be far less time consuming than featureExtraction for the whole set on COBALT.
+The jobWriter programs are used to generate scripts to instruct CONDOR. Executing
+
+```
+>>> jobWriter/jobWriter.py jobs.config
+```
+
+on any node of the NFX-Cluster (CONDOR or submitter) will create four directories.
+
+* `/home/sninfa/jobs/FE_11057`
+* `/home/sninfa/jobs/FE_11058`
+* `/home/sninfa/jobs/FE_11499`
+* `/home/sninfa/jobs/FE_44137`
+
+These target directories can be altered by editing the jobs.config file. The directories initially contain three files each.
+
+* `dagman.config`
+* `job.dag`
+* `submit.sub`
+
+The simultaneous submission of all jobs in directory X is achieved by the entering the command line
+
+```
+>>> condor_submit_dag -config dagman.config job_hdf5.dag
+```
+
+from the submitter node. The same command has to be entered from each of the four directories. (Actually the fourth directory
+can be omitted, since the 44137 dataset is not used and should not be used!)
+For each of the processed Level-3 MonteCarlo files a Level-4 file is created and stored under the respective output directory.
+
+* `/data/user/sninfa/level4_mc/11057`
+* `/data/user/sninfa/level4_mc/11058`
+* `/data/user/sninfa/level4_mc/11499`
+* `/data/user/sninfa/level4_mc/44137`
+
+The newly created Level-4 files are then cast together into one large .hdf5 file using hdf5_writer.py. This process could
+theoretically also be submitted to CONDOR but since this task is not parallelizable and only occupies one CPU, it can be run
+on COBALT, which is the more effective approach here.
+
+The results from the MuonGun simulation (mgs) are processed in a similar manner. The submission scripts are generated through
+
+```
+>>> jobWriter/jobWriter_mgs.py jobs_mgs.config
+>>> jobWriter/jobWriter_mgs_labeling.py jobs_mgs_labeling.config
+```
+
+where mgs is applied to the output of the simulation chain after step 5 and mgs_labeling is applied to the output after step 1.
+
+All other jobWriters can be safely ignored as they are not integrated into the final analysis chain.
